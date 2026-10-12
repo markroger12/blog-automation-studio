@@ -23,7 +23,8 @@
     "user:create": "tsx scripts/create-user.ts",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "vitest run --project unit",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
     "postinstall": "prisma generate"
   },
