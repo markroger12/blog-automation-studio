@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+:root { color-scheme: light; }
+body { @apply bg-slate-50 text-slate-900 antialiased; }
+.card { @apply rounded-xl border border-slate-200 bg-white p-5 shadow-sm; }
+.btn { @apply inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50; }
+.btn-primary { @apply btn bg-blue-600 text-white hover:bg-blue-700; }
+.btn-secondary { @apply btn border border-slate-300 bg-white text-slate-800 hover:bg-slate-50; }
+.btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+.input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100; }
+.label { @apply mb-1 block text-sm font-medium text-slate-700; }
+.table { @apply w-full text-left text-sm; }
+.table th { @apply border-b border-slate-200 px-3 py-2 font-medium text-slate-500; }
+.table td { @apply border-b border-slate-100 px-3 py-2 align-top; }
+.article-preview h2 { @apply mt-6 mb-2 text-xl font-semibold; }
+.article-preview h3 { @apply mt-4 mb-2 text-lg font-semibold; }
+.article-preview p { @apply my-3 leading-7; }
+.article-preview a { @apply text-blue-700 underline; }
+.article-preview table { @apply my-4 w-full border border-slate-200 text-sm; }
+.article-preview td, .article-preview th { @apply border border-slate-200 px-3 py-1.5; }
+.article-preview ul { @apply my-3 list-disc pl-6; }
+.article-preview ol { @apply my-3 list-decimal pl-6; }
