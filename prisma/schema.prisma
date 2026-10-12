@@ -1,0 +1,623 @@
+// Blog Automation Studio 3.0 — SQLite schema.
+// Enumerations are stored as strings and validated by the shared Zod schemas in src/lib/domain.ts.
+// Never reset this database during normal operation; add new migrations instead.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         String    @default("EDITOR") // ADMIN | EDITOR
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  audits       AuditLog[]
+}
+
+model BrowserProfile {
+  id             String    @id @default(cuid())
+  name           String
+  kind           String    // CHATGPT | WORDPRESS | GENERIC
+  directory      String    @unique
+  sessionState   String    @default("UNKNOWN") // UNKNOWN | ACTIVE | LOGIN_REQUIRED | ERROR
+  lastCheckedAt  DateTime?
+  lastLoginAt    DateTime?
+  diagnostics    String?   // JSON
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  websites       Website[]
+}
+
+model Website {
+  id                 String          @id @default(cuid())
+  name               String
+  slug               String          @unique
+  publicUrl          String
+  adminUrl           String
+  active             Boolean         @default(true)
+  profileId          String?
+  profile            BrowserProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  defaultCategoryId  String?
+  editorType         String          @default("AUTO") // AUTO | GUTENBERG | CLASSIC
+  detectedEditor     String?
+  language           String          @default("English") // English | German
+  targetCountry      String          @default("United States")
+  timezone           String          @default("America/New_York")
+  internalLinkLine   String          @default("Also read:")
+  logoPath           String?
+  accentColor        String          @default("#2563eb")
+  imageSettings      String          @default("{}") // JSON
+  imageTemplate      String          @default("{}") // JSON
+  promptOverrides    String          @default("{}") // JSON
+  workflowSettings   String          @default("{}") // JSON
+  defaultWriter      String          @default("celebrity-v1")
+  canPublish         Boolean         @default(false)
+  canPublishAckAt    DateTime?
+  searchConsoleProperty String?
+  queuePaused        Boolean         @default(false)
+  queuePriority      Int             @default(0)
+  maxConcurrentTasks Int             @default(2)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  categories         Category[]
+  tasks              ArticleTask[]
+  workflows          Workflow[]
+  linkIndex          InternalLinkIndex[]
+  healthObservations SiteHealthObservation[]
+  searchSnapshots    SearchPerformanceSnapshot[]
+}
+
+model Category {
+  id         String   @id @default(cuid())
+  websiteId  String
+  website    Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  externalId Int
+  name       String
+  slug       String?
+  parentExternalId Int?
+  syncedAt   DateTime @default(now())
+
+  @@unique([websiteId, externalId])
+  @@unique([websiteId, name])
+}
+
+model Campaign {
+  id          String   @id @default(cuid())
+  name        String
+  status      String   @default("DRAFT") // DRAFT | QUEUED | PAUSED | CANCELLED | COMPLETED
+  settings    String   @default("{}") // JSON snapshot
+  templateName String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  rows        CampaignImportRow[]
+  tasks       ArticleTask[]
+}
+
+model CampaignImportRow {
+  id              String    @id @default(cuid())
+  campaignId      String
+  campaign        Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  position        Int
+  rawText         String
+  keyword         String
+  normalizedKeyword String
+  exampleTitle    String?
+  secondaryKeywords String  @default("[]")
+  categoryName    String?
+  websiteId       String?
+  writerOverride  String?
+  predictedWriter String?
+  routerReason    String?
+  routerConfidence Float?
+  language        String?
+  priority        Int       @default(0)
+  publicationSlot DateTime?
+  notes           String?
+  preflightStatus String    @default("PENDING") // PENDING | OK | DUPLICATE | NEAR_DUPLICATE | INVALID | EXISTING_POST | CONFIRMED_VARIANT
+  preflightIssues String    @default("[]")
+  taskId          String?   @unique
+  createdAt       DateTime  @default(now())
+
+  @@index([campaignId, position])
+  @@index([normalizedKeyword])
+}
+
+model ArticleTask {
+  id                 String    @id @default(cuid())
+  moduleKey          String
+  websiteId          String?
+  website            Website?  @relation(fields: [websiteId], references: [id], onDelete: SetNull)
+  categoryId         String?
+  categoryName       String?
+  campaignId         String?
+  campaign           Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  primaryKeyword     String
+  normalizedKeyword  String
+  exampleTitle       String?
+  secondaryKeywords  String    @default("[]")
+  targetCountry      String    @default("United States")
+  language           String    @default("English")
+  status             String    @default("QUEUED")
+  stage              String?
+  percent            Int       @default(0)
+  message            String?
+  errors             String    @default("[]")
+  reviewReasons      String    @default("[]")
+  cancelRequested    Boolean   @default(false)
+  priority           Int       @default(0)
+  titleOptions       String    @default("[]")
+  recommendedTitle   String?
+  selectedTitle      String?
+  titleApprovedAt    DateTime?
+  articleApprovedAt  DateTime?
+  researchSnapshot   String?
+  outputSnapshot     String?   // JSON
+  bodyHtml           String?
+  assembledHtml      String?
+  faqs               String    @default("[]")
+  quickBio           String?   // JSON rows
+  tags               String    @default("[]")
+  seoTitle           String?
+  metaDescription    String?
+  slug               String?
+  focusKeyword       String?
+  seoScore           Int?
+  rankMathScore      Int?
+  metrics            String    @default("{}")
+  configSnapshot     String    @default("{}")
+  conversationUrl    String?
+  wpPostId           Int?
+  wpEditUrl          String?
+  wpDraftAt          DateTime?
+  wpStatus           String?
+  idempotencyKey     String    @unique
+  version            Int       @default(1)
+  chatgptInteractions Int      @default(0)
+  verifiedCompleteAt DateTime?
+  createdById        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  stages             ArticleStage[]
+  responses          ChatGPTResponse[]
+  logs               Log[]
+  seoReports         SEOReport[]
+  qualityReports     ArticleQualityReport[]
+  claims             ClaimEvidence[]
+  fingerprints       ContentFingerprint[]
+  suggestedLinks     SuggestedInternalLink[]
+  revisions          ContentRevision[]
+  incidents          RecoveryIncident[]
+  stageHistory       ArticleStageHistory[]
+
+  @@index([status])
+  @@index([websiteId, status])
+  @@index([normalizedKeyword])
+  @@index([createdAt])
+}
+
+model ArticleStage {
+  id            String    @id @default(cuid())
+  taskId        String
+  task          ArticleTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  stageKey      String
+  position      Int
+  label         String
+  kind          String    // chatgpt | local | gate | wordpress
+  status        String    @default("PENDING") // PENDING | RUNNING | COMPLETED | FAILED | SKIPPED
+  attempts      Int       @default(0)
+  inputSnapshot String?
+  promptVersion String?
+  prompt        String?
+  output        String?
+  outputHtml    String?
+  outputJson    String?
+  error         String?
+  privateState  String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  durationMs    Int?
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([taskId, stageKey])
+}
+
+model ArticleStageHistory {
+  id         String   @id @default(cuid())
+  taskId     String
+  task       ArticleTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  stageKey   String
+  attempts   Int
+  prompt     String?
+  output     String?
+  outputHtml String?
+  outputJson String?
+  reason     String
+  createdAt  DateTime @default(now())
+
+  @@index([taskId, stageKey])
+}
+
+model ChatGPTResponse {
+  id              String   @id @default(cuid())
+  taskId          String?
+  task            ArticleTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  stageKey        String?
+  attempt         Int      @default(1)
+  operationId     String   @unique
+  prompt          String
+  promptHash      String
+  resultText      String?
+  resultHtml      String?
+  conversationUrl String?
+  fingerprint     String?
+  recovered       Boolean  @default(false)
+  elapsedMs       Int?
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+}
+
+model PromptTemplate {
+  id           String   @id @default(cuid())
+  moduleKey    String
+  stageKey     String
+  name         String
+  description  String   @default("")
+  content      String
+  defaultHash  String
+  defaultVersion Int    @default(1)
+  variables    String   @default("[]")
+  customized   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  history      PromptTemplateHistory[]
+
+  @@unique([moduleKey, stageKey])
+}
+
+model PromptTemplateHistory {
+  id         String   @id @default(cuid())
+  templateId String
+  template   PromptTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  content    String
+  note       String   @default("")
+  createdAt  DateTime @default(now())
+}
+
+model QueueJob {
+  id             String    @id @default(cuid())
+  queue          String    // article | chatgpt | control | workflow | humanizer | wordpress
+  kind           String
+  taskId         String?
+  relatedId      String?
+  websiteId      String?
+  payload        String    @default("{}")
+  result         String?
+  status         String    @default("WAITING") // WAITING | ACTIVE | COMPLETED | FAILED | CANCELLED
+  priority       Int       @default(0)
+  runAt          DateTime  @default(now())
+  leaseExpiresAt DateTime?
+  lockedBy       String?
+  heartbeatAt    DateTime?
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(3)
+  operationKey   String    @unique
+  sideEffect     String    @default("NONE") // NONE | EXTERNAL
+  lastError      String?
+  tabId          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  completedAt    DateTime?
+
+  @@index([queue, status, runAt])
+  @@index([taskId])
+}
+
+model WorkerLock {
+  id          String   @id // always "primary"
+  workerId    String
+  pid         Int
+  hostname    String
+  heartbeatAt DateTime
+  expiresAt   DateTime
+  acquiredAt  DateTime @default(now())
+}
+
+model WorkerStatus {
+  id           String   @id // "worker" | "extension:<instance>"
+  kind         String   // WORKER | EXTENSION
+  version      String?
+  status       String   @default("UNKNOWN")
+  capabilities String   @default("[]")
+  diagnostics  String   @default("{}")
+  lastSeenAt   DateTime @default(now())
+}
+
+model ExtensionKey {
+  id        String    @id @default(cuid())
+  keyHash   String    @unique
+  prefix    String
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+}
+
+model Log {
+  id         String   @id @default(cuid())
+  level      String   // debug | info | warn | error
+  category   String
+  stage      String?
+  taskId     String?
+  task       ArticleTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  message    String
+  details    String?
+  screenshot String?
+  createdAt  DateTime @default(now())
+
+  @@index([taskId, createdAt])
+  @@index([createdAt])
+}
+
+model Setting {
+  key           String   @id
+  value         String
+  schemaVersion Int      @default(1)
+  updatedAt     DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  target    String
+  details   String   @default("{}")
+  createdAt DateTime @default(now())
+}
+
+model SEOReport {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      ArticleTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  source    String   // INTERNAL | RANKMATH
+  score     Int
+  checks    String
+  metrics   String
+  createdAt DateTime @default(now())
+}
+
+model Workflow {
+  id               String   @id @default(cuid())
+  websiteId        String
+  website          Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  active           Boolean  @default(false)
+  writerPreference String   @default("AUTO")
+  weekdays         String   @default("[]")
+  slots            String   @default("[]") // "h:mm AM" in Asia/Karachi
+  writeAheadHours  Int      @default(24)
+  maxBacklog       Int      @default(10)
+  imageOverride    String   @default("inherit")
+  requestIndexing  Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  keywords         WorkflowKeyword[]
+}
+
+model WorkflowKeyword {
+  id                String    @id @default(cuid())
+  workflowId        String
+  workflow          Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  keyword           String
+  normalizedKeyword String
+  title             String?
+  secondaryKeywords String    @default("[]")
+  writerType        String    @default("UNKNOWN")
+  detectionReason   String?
+  position          Int
+  status            String    @default("WAITING")
+  taskId            String?
+  scheduledAt       DateTime?
+  publishedUrl      String?
+  publishedAt       DateTime?
+  indexingRequestedAt DateTime?
+  indexingStatus    String?
+  retries           Int       @default(0)
+  lastError         String?
+  createdAt         DateTime  @default(now())
+
+  @@index([workflowId, position])
+}
+
+model ScheduleSlotReservation {
+  id          String   @id @default(cuid())
+  websiteId   String
+  slotUtc     DateTime
+  keywordId   String   @unique
+  createdAt   DateTime @default(now())
+
+  @@unique([websiteId, slotUtc])
+}
+
+model ArticleQualityReport {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      ArticleTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  passed    Boolean
+  hardStops String   @default("[]")
+  warnings  String   @default("[]")
+  checks    String   @default("[]")
+  createdAt DateTime @default(now())
+}
+
+model SourceRecord {
+  id          String   @id @default(cuid())
+  url         String   @unique
+  title       String?
+  domain      String
+  trustTier   Int      @default(2)
+  fetchedAt   DateTime?
+  httpStatus  Int?
+  createdAt   DateTime @default(now())
+  claims      ClaimEvidence[]
+}
+
+model ClaimEvidence {
+  id                 String   @id @default(cuid())
+  taskId             String
+  task               ArticleTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  claim              String
+  claimType          String   // NAME | DATE | FAMILY | EDUCATION | WORK | AWARD | EARNINGS | RECENT | OTHER
+  sourceId           String?
+  source             SourceRecord? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  excerpt            String?
+  observedAt         DateTime @default(now())
+  confidence         Float    @default(0)
+  verificationStatus String   @default("UNVERIFIED") // CONFIRMED | REPORTED | ESTIMATE | UNVERIFIED | CONTRADICTED
+  articleLocation    String?
+  createdAt          DateTime @default(now())
+
+  @@index([taskId])
+}
+
+model ContentFingerprint {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      ArticleTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  websiteId String?
+  kind      String   // PARAGRAPH | SHINGLE | TITLE | KEYWORD
+  hash      String
+  excerpt   String?
+  createdAt DateTime @default(now())
+
+  @@index([hash])
+  @@index([taskId])
+}
+
+model InternalLinkIndex {
+  id              String   @id @default(cuid())
+  websiteId       String
+  website         Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  wpPostId        Int?
+  url             String
+  title           String
+  slug            String?
+  categoryName    String?
+  headings        String   @default("[]")
+  primaryKeyword  String?
+  status          String   @default("publish")
+  updatedRemoteAt DateTime?
+  lastVerifiedAt  DateTime?
+  broken          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@unique([websiteId, url])
+}
+
+model SuggestedInternalLink {
+  id          String   @id @default(cuid())
+  taskId      String
+  task        ArticleTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  targetUrl   String
+  targetTitle String
+  anchor      String
+  placement   String   // CONTEXTUAL | FOOTER_LINE
+  score       Float
+  accepted    Boolean  @default(true)
+  reason      String?
+  createdAt   DateTime @default(now())
+}
+
+model RefreshCandidate {
+  id        String   @id @default(cuid())
+  taskId    String?
+  websiteId String
+  url       String?
+  reasons   String   @default("[]")
+  evidence  String   @default("[]")
+  priority  Int      @default(0)
+  status    String   @default("OPEN") // OPEN | PROPOSED | APPROVED | REJECTED | APPLIED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContentRevision {
+  id          String   @id @default(cuid())
+  taskId      String
+  task        ArticleTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  kind        String   // REFRESH | REGENERATION | MANUAL | SEO_CORRECTION | HUMANIZER
+  beforeHtml  String?
+  afterHtml   String?
+  diff        String?
+  status      String   @default("PROPOSED")
+  approvedAt  DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model SearchPerformanceSnapshot {
+  id          String   @id @default(cuid())
+  websiteId   String
+  website     Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  property    String
+  date        DateTime
+  page        String?
+  query       String?
+  clicks      Int
+  impressions Int
+  ctr         Float
+  position    Float
+  source      String   // IMPORT | API
+  importedAt  DateTime @default(now())
+
+  @@index([websiteId, date])
+}
+
+model ProductionMetric {
+  id         String   @id @default(cuid())
+  taskId     String?
+  websiteId  String?
+  moduleKey  String?
+  stageKey   String?
+  kind       String   // STAGE_DURATION | VERIFIED_DRAFT | RATE_LIMIT_WAIT | RETRY
+  valueMs    Int?
+  count      Int      @default(1)
+  appVersion String   @default("3.0.0")
+  recordedAt DateTime @default(now())
+  dedupeKey  String?  @unique
+
+  @@index([kind, recordedAt])
+}
+
+model RecoveryIncident {
+  id         String   @id @default(cuid())
+  taskId     String?
+  task       ArticleTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  jobId      String?
+  stageKey   String?
+  kind       String   // STALE_LEASE | UNCERTAIN_PROMPT | UNCERTAIN_WP_CREATE | WORKER_CRASH
+  reason     String
+  resolution String?
+  status     String   @default("OPEN") // OPEN | RESOLVED | IGNORED
+  details    String   @default("{}")
+  createdAt  DateTime @default(now())
+  resolvedAt DateTime?
+}
+
+model SiteHealthObservation {
+  id         String   @id @default(cuid())
+  websiteId  String
+  website    Website  @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  check      String   // SESSION | CATEGORIES | EDITOR | REACHABILITY
+  ok         Boolean
+  message    String?
+  observedAt DateTime @default(now())
+
+  @@index([websiteId, observedAt])
+}

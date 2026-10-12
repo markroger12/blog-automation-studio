@@ -1,0 +1,36 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Fake ChatGPT</title></head>
+<body>
+<main id="thread"></main>
+<div id="composer">
+  <div id="prompt-textarea" contenteditable="true" class="ProseMirror"></div>
+  <button data-testid="send-button">Send</button>
+</div>
+<script>
+  const params = new URLSearchParams(location.search);
+  const mode = params.get('mode') || window.__FAKE_MODE || 'normal';
+  const thread = document.getElementById('thread');
+  const input = document.getElementById('prompt-textarea');
+  const send = document.querySelector('[data-testid="send-button"]');
+  if (mode === 'login') { document.getElementById('composer').remove(); document.body.insertAdjacentHTML('beforeend', '<button data-testid="login-button">Log in</button>'); }
+  if (mode === 'challenge') document.body.insertAdjacentHTML('beforeend', '<iframe src="https://challenges.cloudflare.com/x"></iframe>');
+  input.addEventListener('paste', (e) => { e.preventDefault(); input.innerText = e.clipboardData.getData('text/plain'); });
+  window.__sendCount = 0;
+  function add(role, html) { const d = document.createElement('div'); d.setAttribute('data-message-author-role', role); d.innerHTML = html; thread.appendChild(d); return d; }
+  if (window.__PRELOAD) for (const [r, h] of window.__PRELOAD) add(r, h);
+  send.addEventListener('click', () => {
+    window.__sendCount++;
+    const text = input.innerText;
+    add('user', '<div></div>').firstChild.textContent = text;
+    input.innerText = '';
+    if (!location.pathname.startsWith('/c/')) history.pushState({}, '', '/c/fake-' + Math.random().toString(36).slice(2, 8));
+    const stop = document.createElement('button'); stop.setAttribute('data-testid', 'stop-button'); document.body.appendChild(stop);
+    const a = add('assistant', '<div class="markdown"></div>');
+    const md = a.firstChild;
+    if (mode === 'limit') { setTimeout(() => { stop.remove(); md.innerHTML = "<p>You've reached our limit of messages per hour. Please try again in 2 minutes.</p>"; }, 300); return; }
+    const parts = ['<h2>Early Life</h2>', '<p>She was born in <strong>Spokane</strong>.</p>', '<table><tr><th>Attribute</th><th>Details</th></tr><tr><td>Full Name</td><td>Jane Doe</td></tr></table>', '<ul><li>One</li><li>Two</li></ul>', `<p>Echo length ${text.length}</p>`];
+    let i = 0;
+    const t = setInterval(() => { md.innerHTML += parts[i++]; if (i >= parts.length) { clearInterval(t); setTimeout(() => stop.remove(), 200); } }, 150);
+  });
+</script>
+</body></html>
