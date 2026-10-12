@@ -2,7 +2,7 @@ import 'server-only';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
-import { ZodError, type ZodType } from 'zod';
+import { ZodError, type z } from 'zod';
 import { CSRF_COOKIE, SESSION_COOKIE, verifySession, type SessionClaims } from './session';
 import type { Role } from '../domain';
 import { prisma } from '../db';
@@ -53,10 +53,11 @@ export async function assertSameOriginAndCsrf(req: Request, session: SessionClai
 
 type Handler<T> = (ctx: { req: Request; session: SessionClaims; body: T; params: Record<string, string> }) => Promise<unknown>;
 
-export function apiRoute<T = undefined>(
-  opts: { role?: Role; schema?: ZodType<T>; mutating?: boolean },
-  handler: Handler<T>,
+export function apiRoute<S extends z.ZodType = z.ZodUndefined>(
+  opts: { role?: Role; schema?: S; mutating?: boolean },
+  handler: Handler<z.output<S>>,
 ) {
+  type T = z.output<S>;
   return async (req: Request, routeCtx: { params: Promise<Record<string, string>> }) => {
     try {
       const session = await getSession();

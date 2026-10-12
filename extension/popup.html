@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+body{font:13px system-ui;width:320px;margin:12px;color:#0f172a}label{display:block;margin:8px 0 2px;font-weight:600}input{width:100%;box-sizing:border-box;padding:6px;border:1px solid #cbd5e1;border-radius:6px}
+button{margin-top:10px;padding:6px 10px;border-radius:6px;border:0;background:#2563eb;color:#fff;cursor:pointer}#status{margin-top:10px;white-space:pre-wrap;background:#f1f5f9;padding:8px;border-radius:6px}
+</style></head><body>
+<h3 style="margin:0">Blog Automation Studio Agent</h3>
+<label for="server">Local server URL</label><input id="server" placeholder="http://localhost:3000">
+<label for="key">Connection key (Settings → Extension)</label><input id="key" type="password" placeholder="bas_…">
+<label for="tabs">ChatGPT worker tabs (1–5)</label><input id="tabs" type="number" min="1" max="5" value="2">
+<label><input id="enabled" type="checkbox" style="width:auto"> Process jobs</label>
+<button id="save">Save</button> <button id="test">Test connection</button>
+<div id="status">…</div>
+<script src="popup.js"></script>
+</body></html>

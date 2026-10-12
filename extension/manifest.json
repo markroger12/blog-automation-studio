@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Blog Automation Studio Agent",
+  "version": "3.0.0",
+  "description": "Connects your signed-in ChatGPT tabs to your local Blog Automation Studio. Talks only to the configured local server.",
+  "minimum_chrome_version": "116",
+  "permissions": ["storage", "tabs", "alarms", "scripting"],
+  "host_permissions": ["https://chatgpt.com/*", "https://chat.openai.com/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"], "js": ["content.js"], "run_at": "document_idle" }
+  ],
+  "action": { "default_popup": "popup.html", "default_title": "Blog Automation Studio" }
+}
