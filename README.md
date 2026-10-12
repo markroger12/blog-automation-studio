@@ -19,6 +19,9 @@ Open http://localhost:3000 and create the first administrator. Then follow **Set
 3. **Websites → Add website → Login (manual)** → sign in yourself → **Sync categories**.
 4. **New article** → choose a writer and keywords.
 
+Upgrading: stop `npm run dev:all` first, then `npm install && npm run setup` (migrations need the database free).
+Browser: Playwright uses installed Chrome (`BROWSER_CHANNEL=chrome`). If Chrome lives somewhere non-standard, set `BROWSER_EXECUTABLE_PATH` in `.env`.
+
 Production: `npm run build && npm run start:all`. Backup: `npx tsx scripts/backup.ts` (online `VACUUM INTO`, plus media). Extra users: `npm run user:create`.
 
 ## Architecture

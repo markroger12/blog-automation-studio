@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { chromium, type BrowserContext, type Page } from 'playwright';
+import { browserLaunchTarget } from '@/lib/browser';
 import { ensureDir, profileDirForSlug } from '@/lib/paths';
 import { assertMutationAllowed, isPostMutationUrl, PublishBlockedError } from './publish-guard';
 import { selectorsFor } from './selectors';
@@ -21,11 +22,11 @@ export async function openWordPressContext(opts: OpenOptions): Promise<BrowserCo
   const dir = ensureDir(profileDirForSlug(opts.slug));
   const existing = open.get(dir);
   if (existing) return existing;
-  const channel = opts.channel ?? (process.env.BROWSER_CHANNEL as OpenOptions['channel']) ?? 'chrome';
+  const { label: _label, ...target } = browserLaunchTarget(opts.channel);
   const p = chromium
     .launchPersistentContext(dir, {
       headless: opts.headless,
-      ...(channel === 'chromium' ? {} : { channel }),
+      ...target,
       viewport: { width: 1440, height: 900 },
       args: ['--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
     })

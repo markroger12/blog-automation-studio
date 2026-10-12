@@ -2,6 +2,7 @@ import { execSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { browserLaunchTarget } from '../src/lib/browser';
 
 const root = process.cwd();
 const dataDir = path.join(root, 'data');
@@ -16,19 +17,26 @@ if (!fs.existsSync(envPath)) {
 } else console.log('✔ .env exists (left unchanged)');
 
 console.log('… Applying database migrations (never resets data)');
-execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+try {
+  execSync('npx prisma migrate deploy', { stdio: ['inherit', 'inherit', 'pipe'] });
+} catch (e) {
+  const stderr = String((e as { stderr?: Buffer }).stderr ?? '');
+  process.stderr.write(stderr);
+  if (/database is locked/i.test(stderr)) console.error('\n✖ The database is in use. Stop `npm run dev:all` (dashboard and worker), then run `npm run setup` again. No data was changed.');
+  process.exit(1);
+}
 execSync('npx prisma generate', { stdio: 'inherit' });
 execSync('npx tsx scripts/seed.ts', { stdio: 'inherit' });
 
 async function checkBrowser() {
   try {
     const { chromium } = await import('playwright');
-    const channel = (process.env.BROWSER_CHANNEL ?? 'chrome') as string;
-    const b = await chromium.launch({ headless: true, ...(channel === 'chromium' ? {} : { channel }) });
-    console.log(`✔ Browser channel "${channel}" is available (${b.version()})`);
+    const { label, ...target } = browserLaunchTarget();
+    const b = await chromium.launch({ headless: true, ...target });
+    console.log(`✔ Browser "${label}" is available (${b.version()})`);
     await b.close();
   } catch (e) {
-    console.warn(`⚠ Could not launch the configured browser: ${(e as Error).message.split('\n')[0]}\n  Install Google Chrome, or set BROWSER_CHANNEL=msedge / chromium in .env (for chromium run: npx playwright install chromium).`);
+    console.warn(`⚠ Could not launch the configured browser: ${(e as Error).message.split('\n')[0]}\n  Install Google Chrome, or set BROWSER_EXECUTABLE_PATH to your Chrome binary, or BROWSER_CHANNEL=msedge / chromium in .env (for chromium run: npx playwright install chromium).`);
   }
 }
 
