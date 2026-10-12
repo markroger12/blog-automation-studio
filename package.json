@@ -1,0 +1,61 @@
+{
+  "name": "blog-automation-studio",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Self-hosted Blog Automation Studio 3.0 — local dashboard, worker and ChatGPT MV3 extension for WordPress drafting",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "setup": "tsx scripts/setup.ts",
+    "dev": "next dev -p 3000",
+    "worker:dev": "tsx watch --clear-screen=false src/worker/index.ts",
+    "worker": "tsx src/worker/index.ts",
+    "dev:all": "concurrently -k -n web,worker -c blue,magenta \"npm:dev\" \"npm:worker:dev\"",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "start:all": "concurrently -k -n web,worker -c blue,magenta \"npm:start\" \"npm:worker\"",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:backup": "tsx scripts/backup.ts",
+    "user:create": "tsx scripts/create-user.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "6.16.2",
+    "bcryptjs": "3.0.2",
+    "cheerio": "1.1.2",
+    "jose": "6.1.0",
+    "lucide-react": "0.544.0",
+    "marked": "16.3.0",
+    "next": "15.5.20",
+    "papaparse": "5.5.3",
+    "playwright": "1.55.0",
+    "react": "19.1.9",
+    "react-dom": "19.1.9",
+    "sanitize-html": "2.17.0",
+    "server-only": "0.0.1",
+    "sharp": "0.34.4",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.1.13",
+    "@types/node": "20.19.17",
+    "@types/papaparse": "5.3.16",
+    "@types/react": "19.1.13",
+    "@types/react-dom": "19.1.9",
+    "@types/sanitize-html": "2.16.0",
+    "concurrently": "9.2.1",
+    "prisma": "6.16.2",
+    "tailwindcss": "4.1.13",
+    "tsx": "4.20.5",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  }
+}
